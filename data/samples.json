@@ -1,0 +1,70 @@
+[
+  {
+    "slug": "01-pricing-rationale",
+    "kind": "analysis",
+    "prompt": "Compare per-image billing with token billing for a pipeline that generates 20,000 product images per month. Give a decision rule in three bullet points.",
+    "model": "claude-opus-5",
+    "response": "## The structural difference\n\n| | Per-image billing | Token billing |\n|---|---|---|\n| Unit of charge | One output image at a quality/size tier | Input tokens (prompt + reference images + history) + output tokens (image) |\n| Cost of a long prompt | Free | Charged |\n| Cost of reference images / multi-turn edits | Free | Charged every call, and grows if you resend conversation history |\n| Cost of small or odd-sized outputs | Usually rounded up to the nearest tier | Scales with actual image tokens |\n| Retries and rejects | Full price each | Full price each |\n| Caching discounts | Rarely available | Often available on repeated system prompts/references |\n| Forecastability | High (one number × volume) | Medium (depends on prompt shape) |\n\nKey insight: for most image models, output image tokens are effectively **fixed per resolution tier**, so token billing behaves like per-image billing *plus a variable input surcharge*. The decision therefore usually turns on how heavy your input side is, not on your output volume.\n\n## Break-even math at 20,000 images/month\n\nLet `P` = per-image price, `O` = output tokens/image × output rate, `I` = input tokens/call, `r_i` = input rate.\n\n**Token billing wins when `I < (P − O) / r_i`.**\n\nIllustrative (verify current vendor rates — these move):\n\n- **Baseline:** 20,000 × $0.04 = **$800/mo**. A comparable token path at ~1,300 output tokens × $30/M ≈ $0.039/image plus a 200-token prompt (~$0.0005) ≈ **$790/mo**. Effectively a tie.\n- **Retry reality:** if you generate 1.4 images per accepted image, both jump to ~28,000 calls ≈ **$1,100/mo**. Always price per *accepted* image, not per call.\n- **Input-heavy case:** 3 reference images (~1,100 tokens each) + 4-turn edit loop with resent history → input can reach 10k–15k tokens/call, adding **$500–$1,000/mo** on the token path only.\n- **Small-output case:** if half your volume is 512px variants, token billing bills roughly proportionally while per-image tiers often charge the full 1K price — token billing can save 20–30% on that slice.\n\nAlso worth noting at this volume: 20k/month is only ~27 images/hour, so if generation isn't user-facing, an async/batch tier (commonly ~50% off) will beat *any* optimization between the two billing models. And $800–$4,000/mo is typically below the threshold where committed-use discounts are offered, so don't assume negotiation will change the ranking.\n\n## Decision rule\n\n- **Compute effective cost per *accepted* image under both models using your actual prompt and retry profile; if the gap is under ~15%, take per-image billing** — the forecasting simplicity and clean COGS-per-SKU attribution is worth more than a marginal saving at 20k/month.\n- **Choose token billing if your pipeline is input-light and output-variable:** short templated prompts, no or few reference images, single-shot generation, mixed/small resolutions, and a cacheable system prompt.\n- **Choose per-image billing if your pipeline is input-heavy or variance-intolerant:** multi-reference conditioning, multi-turn editing loops, long prompts, or a need to quote a fixed unit cost to finance or to customers — because token cost scales with context you can't fully control.",
+    "usage": {
+      "prompt_tokens": 51,
+      "completion_tokens": 2658,
+      "total_tokens": 2709,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "text_tokens": 0,
+        "audio_tokens": 0,
+        "image_tokens": 0
+      },
+      "completion_tokens_details": {
+        "text_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "input_tokens_details": null,
+      "output_tokens_details": null,
+      "claude_cache_creation_5_m_tokens": 0,
+      "claude_cache_creation_1_h_tokens": 0
+    },
+    "latency_s": 43.5,
+    "finish_reason": "stop",
+    "computed_cost_usd": 0.053364
+  },
+  {
+    "slug": "02-migration-checklist",
+    "kind": "checklist",
+    "prompt": "Write a six-step checklist for moving an OpenAI-compatible workload from one API gateway to another, including rollback.",
+    "model": "claude-opus-5",
+    "response": "# Migration Checklist: OpenAI-Compatible Workload → New API Gateway\n\n## 1. Inventory the surface you actually depend on\n\n\"OpenAI-compatible\" is a spectrum, and gateways diverge at the edges.\n\n- **Endpoints in use:** `/chat/completions`, `/responses`, `/embeddings`, `/models`, `/audio/*`, `/images/*`, `/batches`, `/files`.\n- **Request params:** `tools` / `tool_choice`, `response_format` (especially `json_schema` strictness), `stream_options.include_usage`, `seed`, `logprobs`, `n`, `stop`, `logit_bias`, `max_tokens` vs `max_completion_tokens`, `reasoning_effort`.\n- **Response shape:** SSE chunk framing and `[DONE]` sentinel, `finish_reason` values, `usage` field presence/placement, tool-call ID formats, `refusal` field, multi-part content arrays.\n- **Error contract:** HTTP codes, JSON error body shape (`error.type`/`error.code`), `Retry-After` and rate-limit headers your client retry logic reads.\n- **Headers & auth:** `Authorization`, `OpenAI-Organization`/`Project`, custom routing headers, idempotency keys.\n- **Operational limits:** max body size, request timeout, context window per model, concurrency and TPM/RPM quotas.\n\n> **Exit gate:** a written compatibility matrix with every gap labeled *blocking*, *shimmable*, or *ignorable*.\n\n## 2. Stand up the target gateway as configuration, not code\n\n- Map model names explicitly (`gpt-4o-2024-11-20` → target alias); **pin versions**, avoid floating aliases during migration.\n- Provision credentials, quotas, rate limits, caching, guardrails, and log redaction policies.\n- Clear the network path: egress allowlists, private link/VPC peering, mTLS, proxy chains, TLS cert trust.\n- Ensure `base_url`, model name, API key, and timeouts are **runtime-configurable** (env/flag/config service) — no rebuild required to switch or revert.\n- Write shims for *shimmable* gaps from Step 1 behind a single adapter layer.\n\n> **Exit gate:** one config change flips a client between gateways, in both directions.\n\n## 3. Prove parity offline before any production traffic\n\n- Replay a **golden corpus** (200–1000 real, de-identified requests) against old and new gateways; include long contexts, multimodal inputs, tool-calling loops, and JSON-schema outputs.\n- Diff **structurally**, not byte-exact: schema validity, tool-call arity and argument parseability, `finish_reason` distribution, token-count drift, empty/refusal rate.\n- Compare **streaming** chunk-by-chunk: first-token latency, chunk cadence, usage delivery, mid-stream error behavior.\n- Inject failures: 401, 404 model, 429, 500, timeout, context-length overflow, canceled stream — confirm your client retry/backoff still behaves.\n- Load-test to expected peak: TTFT, p50/p95/p99 end-to-end, tokens/sec, error rate, cost per 1K requests.\n\n> **Exit gate:** documented pass/fail thresholds met; unresolved *blocking* gaps = stop.\n\n## 4. Build and rehearse rollback **before** cutover\n\n- Keep the old gateway **hot** — credentials valid, quotas reserved, capacity unscaled-down, for the entire rollback window.\n- Define the rollback mechanism and measure it: feature flag or config push (seconds, preferred) over DNS/TTL changes (minutes, fragile).\n- Handle **stateful residue**: in-flight batch jobs, uploaded files, server-side conversation/thread state, vector stores, prompt caches, gateway-side semantic cache. These usually *do not* migrate — drain or dual-write, never assume.\n- Write explicit rollback triggers with owners and no-debate authority:\n\n| Trigger | Threshold |\n|---|---|\n| 5xx / gateway error rate | > 1% over 5 min |\n| p95 latency or TTFT | > 1.5× baseline over 10 min |\n| Malformed tool calls / schema failures | > 0.5% |\n| Empty or refusal responses | > 2× baseline |\n| Cost per request | > 1.3× baseline |\n\n- **Rehearse the rollback in staging**, end to end, and time it. An untested rollback is not a rollback.\n\n> **Exit gate:** rollback executed successfully in staging; runbook links, dashboards, and on-call owner published.\n\n## 5. Cut over progressively with bake ",
+    "usage": {
+      "prompt_tokens": 44,
+      "completion_tokens": 3367,
+      "total_tokens": 3411,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "text_tokens": 0,
+        "audio_tokens": 0,
+        "image_tokens": 0
+      },
+      "completion_tokens_details": {
+        "text_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "input_tokens_details": null,
+      "output_tokens_details": null,
+      "claude_cache_creation_5_m_tokens": 0,
+      "claude_cache_creation_1_h_tokens": 0
+    },
+    "latency_s": 52.1,
+    "finish_reason": "stop",
+    "computed_cost_usd": 0.067516
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "models": {
+    "claude-opus-5": {
+      "list": {
+        "input": 5,
+        "cached_input": 0.5,
+        "cache_write": 0,
+        "cache_write_5m": 6.25,
+        "cache_write_1h": 10,
+        "output": 25
+      },
+      "effective": {
+        "input": 4,
+        "cached_input": 0.4,
+        "cache_write": 0,
+        "cache_write_5m": 5,
+        "cache_write_1h": 8,
+        "output": 20
+      }
+    }
+  },
+  "source": "https://apimart.ai/en/pricing",
+  "extracted_at": "2026-09-18T03:38:02Z"
+}
