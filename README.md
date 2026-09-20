@@ -1,15 +1,31 @@
 # Claude Opus 5 API (claude-opus-5)
 
-Claude Opus 5 on APIMart is an Anthropic flagship route available through the OpenAI-compatible chat endpoint: per-million-token billing, prompt-cache write and read rates, and long-form output confirmed by real calls.
+<!-- conv-kit:v1 -->
 
-**Attributed entry points:** [Browse the model catalog](https://go.apimart.ai/k-a8cf8d) · [Current pricing](https://go.apimart.ai/k-5ec63e) · [Get an API key](https://go.apimart.ai/k-95e9da)
+<p align="center">
+  <img src="assets/badges/price.svg" alt="observed unit price"> <img src="assets/badges/billing.svg" alt="billing model"> <img src="assets/badges/compat.svg" alt="OpenAI-compatible endpoint">
+</p>
+
+> **$4 / $20 per million tokens** (input / output, effective) — one OpenAI-compatible endpoint at `https://api.apimart.ai/v1`, no monthly plan required. *(observed 2026-09-17)*
+
+**[Get an API key](https://go.apimart.ai/k-95e9da)** · **[Live pricing](https://go.apimart.ai/k-5ec63e)** · **[Model page](https://go.apimart.ai/k-a8cf8d)** · [⚡ 60-second quickstart](#quickstart)
+
+**Why teams call Claude Opus 5 (`claude-opus-5`) through APIMart**
+
+- **One key, entire catalog.** The same `https://api.apimart.ai/v1` base URL and `Authorization` header reach Claude Opus 5 (`claude-opus-5`) and 300+ other image, video and language models — switch the `model` field, not your client.
+- **$1 minimum, pay as you go.** No subscription and no prepaid plan to size up front: top up from $1 and spend it on calls. There is no free quota to burn through first, so the price in this table is the price you pay.
+- **The charge comes back in the response.** Every call reports the amount billed (`cost` / `credits_cost`), so a spend number is read per call instead of guessed at month end.
+- **Drop-in OpenAI shape.** `POST /v1/chat/completions` with the same request body your client already sends; only `base_url` and `model` change.
+
+<!-- /conv-kit:v1 -->
+
+Claude Opus 5 on APIMart is an Anthropic flagship route available through the OpenAI-compatible chat endpoint: per-million-token billing, prompt-cache write and read rates, and long-form output confirmed by real calls.
 
 ## Model ids
 
 | Model id | Tier | Typical use |
 | --- | --- | --- |
 | `claude-opus-5` | flagship | hardest prompts, long-form reasoning |
-
 
 Endpoint: `POST https://api.apimart.ai/v1/chat/completions` (OpenAI-compatible). **Streaming is the default** — pass
 `stream: false` when you want one JSON object back.
@@ -25,6 +41,20 @@ Endpoint: `POST https://api.apimart.ai/v1/chat/completions` (OpenAI-compatible).
 | cached_input | $0.5 | $0.4 |
 | input | $5.00 | $4.00 |
 | output | $25.00 | $20.00 |
+
+<!-- conv-kit:v1:scale -->
+### What that costs at scale
+
+| Spend | Cost |
+| --- | --- |
+| 1M input tokens | $4.00 |
+| 10M input tokens | $40.00 |
+| 1M input + 250K output (mixed, at the effective output rate) | see the pricing table above |
+
+Linear at the observed per-unit rate, no volume discount assumed. Snapshot 2026-09-17; re-check the live table before committing a budget.
+<!-- /conv-kit:v1:scale -->
+
+
 <!-- pricing:token:end -->
 
 The effective column is what you pay after the default group discount; [`data/model.json`](data/model.json) is refreshed
@@ -76,6 +106,19 @@ from the effective rates above.
 
 Full transcripts (including longer answers) are in [`data/samples.json`](data/samples.json).
 
+<!-- conv-kit:v1:fix -->
+## First-call troubleshooting
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `401` / `invalid api key` | key missing, truncated, or a stray newline pasted into the header | Re-copy it from the console; the header is `Authorization: Bearer $APIMART_API_KEY` |
+| balance / credit error | the account has no balance | Top up from $1 in the console — there is no free quota to fall back on |
+| `429` | concurrent requests on one key | Back off, then retry the same request with the same `Idempotency-Key` |
+| `400` / model not found | wrong route for the id: the per-unit alias needs its `version`, the official id must not send one | Copy the exact `model` value from the route table above |
+| task ends `failed` | prompt rejected by the filter, or a reference image URL expired | Re-submit with a **new** `Idempotency-Key` and re-host the reference image |
+| result URL stops working | result links expire | Download the file as soon as the task reports `completed` |
+<!-- /conv-kit:v1:fix -->
+
 ## FAQ
 
 **What is the Claude Opus 5 API model id?**
@@ -103,6 +146,12 @@ Output tokens are billed per million like input, so a long answer is simply more
 - `llm api pricing comparison`
 - `prompt caching api`
 - `openai compatible api`
+
+<!-- conv-kit:v1:cta -->
+---
+
+**Start with $1.** [Get an API key](https://go.apimart.ai/k-95e9da) → [check live pricing](https://go.apimart.ai/k-5ec63e) → [open Claude Opus 5 (`claude-opus-5`) in the model library](https://go.apimart.ai/k-a8cf8d). The first call is three steps: submit, poll `task_id`, read the charged amount off the response.
+<!-- /conv-kit:v1:cta -->
 
 ## Attributed links (how this repository is measured)
 
