@@ -41,20 +41,6 @@ Endpoint: `POST https://api.apimart.ai/v1/chat/completions` (OpenAI-compatible).
 | cached_input | $0.5 | $0.4 |
 | input | $5.00 | $4.00 |
 | output | $25.00 | $20.00 |
-
-<!-- conv-kit:v1:scale -->
-### What that costs at scale
-
-| Spend | Cost |
-| --- | --- |
-| 1M input tokens | $4.00 |
-| 10M input tokens | $40.00 |
-| 1M input + 250K output (mixed, at the effective output rate) | see the pricing table above |
-
-Linear at the observed per-unit rate, no volume discount assumed. Snapshot 2026-09-17; re-check the live table before committing a budget.
-<!-- /conv-kit:v1:scale -->
-
-
 <!-- pricing:token:end -->
 
 The effective column is what you pay after the default group discount; [`data/model.json`](data/model.json) is refreshed
